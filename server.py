@@ -1,7 +1,7 @@
 # Server.py
 
-# Counts the amount of button presses on the board
-# Sends that value from an HTTP get request
+# Runs Aurdino
+# Sends data from an HTTP get request
 
 # Server and Data
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -17,16 +17,20 @@ import time
 # Data - Not used here but will make life easier when dealing with datasets
 import pandas as pd
 import numpy as np
+
+# Image for the Color Ramp
 from PIL import Image
 
-
+# Data we loop through with the buttonns
 cities  = ["Boston","New York","Los Angeles","Chicago","Miami","Anchorage","Hilo","Honolulu","Phoenix","Oregon","Vancouver"]
 seasons = ["Winter","Spring","Summer","Fall"]
-# Button Count
+
+# Variables changed by the inputs
 city = 0
 year = 1960
 season = 0
 
+#Additional Data to track
 prcp = 0
 temp = 0
 colrs = [];
@@ -69,7 +73,7 @@ def run(server_class=HTTPServer,handler_class=S,port=3000):
         pass
     httpd.server_close()
 
-#Colors
+#Gets color based on the tempature reading
 def getScaleColor(tmp):
     if(tmp<0):
         tmp=0
@@ -77,23 +81,28 @@ def getScaleColor(tmp):
         tmp=100
     tmp = int(tmp)
 
+    # Pulls from a color scale and sends that to the LED/Display
     global colrs
     colrs = Image.open("colorRamp.png").convert("RGB").getpixel((tmp,0))
     
     return (colrs[0],colrs[1]/2,colrs[2])
 
 def getAOutputs(w):
+    # Gets a single row of the weather season data
     snapWeather = w.loc[(cities[city],year,seasons[season])]
 
+    # Gets the two variables
     p = float(snapWeather["sumPrcp"])
     tmp = float(snapWeather["temp"])
     
+    # Sends that to global variables
     global prcp
     global temp
     temp = tmp 
     prcp = p
     pumpRate = 0
 
+    #Sets the pumprate based on the percipitation
     if(p>20):
         pumpRate = 1
     elif (p>12):
@@ -109,7 +118,7 @@ def getAOutputs(w):
 
     return pumpRate, getScaleColor(tmp)
 
-
+# Previous light color function
 def lightColor(w):
     tem = w.loc[(cities[city],year,seasons[season])]
 
@@ -125,37 +134,43 @@ def ardunio(buttonOne,buttonTwo,knob,pump,w,lights):
     boHasPressed = False
     btHasPressed = False
     while(True):
-        # Reads the pin at pin 2
+        # Reads the input pins
         bo = buttonOne.read()
         bt = buttonTwo.read()
         k = knob.read()
 
-        # If it is on
+        # If city button is on
         if bo is True and boHasPressed is False:
             global city
             city += 1
             city = city%11
             boHasPressed = True
 
-        # Wait a thenth of a second
+        #If season button is on
         if bt is True and btHasPressed is False:
             global season
             season += 1
             season = season%4
             btHasPressed = True
 
+        # Makes it so one push = one change
         if bo is False and boHasPressed is True:
             boHasPressed = False
         
         if bt is False and btHasPressed is True:
             btHasPressed = False
         
+        # Sets teh year value
         global year
         year = int(59 * k) + 1960
+
+        #Gets pump rate and LED color
         pumpRate,colors = getAOutputs(w)
 
+        #Send pump rate to pumpo
         pump.write(pumpRate)
         
+        #Sends color to LED
         for i in range(0,3):
             lights[i].write(colors[i]/256)
         time.sleep(0.1)
@@ -170,6 +185,7 @@ if __name__ == '__main__':
     it = pyfirmata.util.Iterator(board)
     it.start()
 
+    # Getting all the pins we need
     buttonOne = board.get_pin('d:7:i')
     buttonTwo = board.get_pin('d:6:i')
     knob = board.get_pin('a:0:i')
@@ -180,6 +196,8 @@ if __name__ == '__main__':
     lightRed = board.get_pin('d:9:p')
 
     lights = [lightRed,lightGreen,lightBlue]
+
+    #Getting our weather data
     weather = pd.read_csv("Data/seasonalWeather.csv").set_index(["CommonName","year","season"]).sort_index()
 
 

@@ -1,14 +1,21 @@
-$( document ).ready(function() {
+// Client Side Code
+// Runs D3 and Get Requests
+
+( document ).ready(function() {
+    //Width and Height
     var width = 900;
     var height = 500;
 
+    //Tracking varaibles
     var prevCity = "New York";
     var prevTemp = 3000;
 
+    //Getting some building blocks
     var svg = d3.select("#map")
     .append("svg")
     .attr("width", width)
     .attr("height", height);
+    
     
     var body = d3.select("body")
     
@@ -26,6 +33,7 @@ $( document ).ready(function() {
     var mapGroup = svg.append("g");
     var circleGroup = svg.append("g");
 
+    // Sets up the map
     d3.json("Data/us.json",function(us){
         mapGroup
         .selectAll("path")
@@ -38,9 +46,7 @@ $( document ).ready(function() {
         .attr("fill","white");
     });
     
-    // We're ready, draws inital cirlle with base values
-
-    //drawCircle({v:[1,1]},svg);
+    // Initlizes screen with dummy data
     setText({"city":["Boston"],"prcp":0,"temp":20,"year":2010,"season":"fall","color":[[255,100,255]]})
     // Loop
 	var interval = function() {
@@ -53,8 +59,7 @@ $( document ).ready(function() {
         	data: "",
 
         }).done(function(data) {
-            // updates the circle with the current data
-            //drawCircle(data,svg);
+            // updates the display with data from the server
             setText(data);
             interval();
         });
@@ -65,19 +70,21 @@ $( document ).ready(function() {
 	interval();
 
     function setText(data){
+        // Sets the text
         d3.select("#city").transition().duration(2000).text(data.city);
         document.getElementById("year").innerHTML = data.year;
         document.getElementById("season").innerHTML = data.season;
         document.getElementById("temp").innerHTML = data.temp;
         document.getElementById("prcp").innerHTML = data.prcp;
         
+        //Sets the background color
         if(prevTemp != data.temp[0]){
             body.transition()
             .duration(1000)
             .style("background-color", d3.rgb(data.color[0][0],data.color[0][1],data.color[0][1]));
         }
         
-
+        // Sets which city is highlighted in red
         if(prevCity != data.city[0]){
             console.log("Drawing New Circles")
             drawCircle(data.city[0]);
@@ -89,6 +96,7 @@ $( document ).ready(function() {
     }
 
     function drawCircle(city){
+        //Draws circles at each city
         d3.csv("Data/stations.csv", function(stations){
             circleGroup.selectAll("circle")
                 .data(stations)
@@ -125,16 +133,17 @@ $( document ).ready(function() {
                        .duration(500)      
                        .style("opacity", 0);   
                 });
-
-                circleGroup.selectAll("circle").transition().duration(500).attr("fill",function(d){
-                    if(d.CommonName == city){
-                        console.log(d.CommonName)
-                        return "red"
-                    }else{
-                        return "grey"
-                    }
-                });
+            
+            // Updates color based on which city is active
+            circleGroup.selectAll("circle").transition().duration(500).attr("fill",function(d){
+                if(d.CommonName == city){
+                    console.log(d.CommonName)
+                    return "red"
+                }else{
+                    return "grey"
+                }
             });
+        });
 
 
     }
